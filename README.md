@@ -90,7 +90,6 @@ sudo chmod 640 \
     /etc/nagios4/private/vcenter.json
 ~~~
 
-Do not commit the actual credential file to a Git repository.
 
 An example credential file is included in this repository:
 
@@ -104,7 +103,6 @@ Copy it and edit the credentials as necessary:
 cp vcenter.json.example vcenter.json
 ~~~
 
-The actual `vcenter.json` file is excluded by `.gitignore`.
 
 ## Usage
 
@@ -327,16 +325,6 @@ Owner: root
 Group: nagios
 Mode:  0640
 ~~~
-
-Do not store real credentials in the Git repository.
-
-The `.gitignore` file should contain:
-
-~~~text
-vcenter.json
-~~~
-
-For production use, creating a dedicated read-only vCenter account for monitoring is recommended instead of using an administrator account.
 
 ## Tested Environments
 

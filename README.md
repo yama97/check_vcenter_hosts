@@ -215,6 +215,9 @@ VCENTER CRITICAL - 4/5 hosts OK; api=api; esxi03.example.com(DISCONNECTED,POWERE
 
 -h, --help
     Show help
+
+-V, --version
+    Show plugin version
 ~~~
 
 You can also display the command-line help with:
@@ -353,4 +356,6 @@ https://github.com/yama97/check_vcenter_hosts
 
 ## License
 
-License information will be added to this project.
+This project is licensed under the MIT License.
+
+See [LICENSE](LICENSE) for details.

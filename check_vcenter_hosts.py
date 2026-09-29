@@ -4,6 +4,9 @@
 #
 # Nagios plugin for monitoring ESXi hosts managed by VMware vCenter.
 #
+# Copyright (c) 2026 Seiichi Yamamoto
+# Licensed under the MIT License.
+#
 # Supported API modes:
 #
 #   --api rest
@@ -43,6 +46,8 @@ import sys
 import urllib.error
 import urllib.request
 
+
+VERSION = "1.0.0"
 
 OK = 0
 WARNING = 1
@@ -491,6 +496,13 @@ def main():
             "Nagios plugin for monitoring ESXi hosts "
             "managed by VMware vCenter"
         )
+    )
+
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {VERSION}"
     )
 
     parser.add_argument(

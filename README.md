@@ -1,6 +1,6 @@
 # check_vcenter_hosts
 
-A Nagios plugin for monitoring ESXi hosts managed by VMware vCenter.
+A lightweight Nagios plugin for monitoring ESXi hosts managed by VMware vCenter.
 
 The plugin connects to the vCenter API and checks:
 
@@ -9,17 +9,18 @@ The plugin connects to the vCenter API and checks:
 - ESXi host power state
 - Overall host health
 
-The plugin uses only the Python 3 standard library. No additional Python packages are required.
+The plugin uses only the Python 3 standard library. No additional Python packages or VMware SDKs are required.
 
 ## Features
 
 - Nagios-compatible return codes
-- Checks expected number of ESXi hosts
+- Checks the expected number of ESXi hosts
 - Checks whether all ESXi hosts are `CONNECTED`
 - Checks whether all ESXi hosts are `POWERED_ON`
-- Nagios performance data output
+- Outputs Nagios performance data
 - Supports legacy and current vCenter REST APIs
-- No external Python modules required
+- No `pyVmomi` or other external Python modules required
+- Tested with VMware vCenter 6.5, 7, and 8
 
 ## Requirements
 
@@ -33,7 +34,7 @@ The plugin uses only the Python 3 standard library. No additional Python package
 |---|---|---|---|
 | vCenter 6.5 | `rest` | `/rest/...` | Tested |
 | vCenter 7 | `api` | `/api/...` | Tested |
-| vCenter 8 | `api` | `/api/...` | Same API endpoints |
+| vCenter 8 | `api` | `/api/...` | Tested |
 | Other versions | `auto` | Automatic detection | Available |
 
 The following API modes can be selected:
@@ -46,7 +47,7 @@ For production monitoring, explicitly specifying `rest` or `api` is recommended.
 
 ## Installation
 
-Copy the plugin to the Nagios local plugin directory:
+Copy the plugin to the local Nagios plugin directory:
 
 ~~~bash
 sudo mkdir -p /usr/local/lib/nagios/plugins
@@ -80,17 +81,30 @@ For example, save it as:
 Set appropriate permissions:
 
 ~~~bash
-sudo chown root:nagios /etc/nagios4/private/vcenter.json
-sudo chmod 640 /etc/nagios4/private/vcenter.json
+sudo mkdir -p /etc/nagios4/private
+
+sudo chown root:nagios \
+    /etc/nagios4/private/vcenter.json
+
+sudo chmod 640 \
+    /etc/nagios4/private/vcenter.json
 ~~~
 
 Do not commit the actual credential file to a Git repository.
 
-An example credential file can be stored in the repository as:
+An example credential file is included in this repository:
 
 ~~~text
 vcenter.json.example
 ~~~
+
+Copy it and edit the credentials as necessary:
+
+~~~bash
+cp vcenter.json.example vcenter.json
+~~~
+
+The actual `vcenter.json` file is excluded by `.gitignore`.
 
 ## Usage
 
@@ -149,6 +163,8 @@ The plugin can automatically try both API types:
     -e 5
 ~~~
 
+For production monitoring, explicitly selecting the API mode is recommended to avoid unnecessary fallback attempts.
+
 ## Example Output
 
 Normal operation:
@@ -163,7 +179,13 @@ If the expected host count is 6 but only 5 hosts are registered:
 VCENTER CRITICAL - 5 hosts registered, expected 6; 5 connected, 5 powered on; api=api | 'hosts_total'=5 'hosts_connected'=5 'hosts_powered_on'=5 'hosts_ok'=5
 ~~~
 
-If one or more ESXi hosts are not connected or powered on, the plugin returns CRITICAL and includes the affected host names and states.
+If one or more ESXi hosts are not connected or powered on, the plugin returns `CRITICAL` and includes the affected host names and states.
+
+Example:
+
+~~~text
+VCENTER CRITICAL - 4/5 hosts OK; api=api; esxi03.example.com(DISCONNECTED,POWERED_ON)
+~~~
 
 ## Command Line Options
 
@@ -190,9 +212,20 @@ If one or more ESXi hosts are not connected or powered on, the plugin returns CR
 
 --verify-cert
     Enable TLS certificate verification
+
+-h, --help
+    Show help
+~~~
+
+You can also display the command-line help with:
+
+~~~bash
+./check_vcenter_hosts.py --help
 ~~~
 
 ## Nagios Configuration
+
+### Command Definition
 
 Example Nagios command definition:
 
@@ -202,6 +235,14 @@ define command {
     command_line    /usr/local/lib/nagios/plugins/check_vcenter_hosts.py -H '$HOSTADDRESS$' -f /etc/nagios4/private/vcenter.json -e '$ARG1$' --api '$ARG2$'
 }
 ~~~
+
+In this example:
+
+- `$HOSTADDRESS$` is the vCenter hostname or IP address
+- `$ARG1$` is the expected number of ESXi hosts
+- `$ARG2$` is the API mode (`rest` or `api`)
+
+### Service Definition
 
 Example service definition for five ESXi hosts using the current API:
 
@@ -220,7 +261,13 @@ define service {
 For vCenter 6.5 using the legacy REST API:
 
 ~~~text
-check_command check_vcenter_hosts!10!rest
+check_command    check_vcenter_hosts!10!rest
+~~~
+
+For vCenter 7 or 8 using the current API:
+
+~~~text
+check_command    check_vcenter_hosts!5!api
 ~~~
 
 ## Nagios Return Codes
@@ -236,18 +283,18 @@ check_command check_vcenter_hosts!10!rest
 
 The plugin outputs the following Nagios performance data:
 
-~~~text
-hosts_total
-hosts_connected
-hosts_powered_on
-hosts_ok
-~~~
+- `hosts_total`
+- `hosts_connected`
+- `hosts_powered_on`
+- `hosts_ok`
 
 Example:
 
 ~~~text
 'hosts_total'=5 'hosts_connected'=5 'hosts_powered_on'=5 'hosts_ok'=5
 ~~~
+
+These values can be used by Nagios-compatible performance data processing and graphing systems.
 
 ## TLS Certificate Verification
 
@@ -264,7 +311,7 @@ To enable certificate verification:
     --verify-cert
 ~~~
 
-The monitoring server must trust the certificate presented by vCenter when this option is enabled.
+When `--verify-cert` is enabled, the monitoring server must trust the certificate presented by vCenter.
 
 ## Security
 
@@ -273,18 +320,20 @@ The credential file contains a vCenter username and password.
 Recommended permissions:
 
 ~~~text
-owner: root
-group: nagios
-mode: 0640
+Owner: root
+Group: nagios
+Mode:  0640
 ~~~
 
 Do not store real credentials in the Git repository.
 
-Add the credential filename to `.gitignore`:
+The `.gitignore` file should contain:
 
 ~~~text
 vcenter.json
 ~~~
+
+For production use, creating a dedicated read-only vCenter account for monitoring is recommended instead of using an administrator account.
 
 ## Tested Environments
 
@@ -292,11 +341,16 @@ The plugin has been tested with:
 
 - VMware vCenter 6.5 using the legacy `/rest` API
 - VMware vCenter 7 using the `/api` API
+- VMware vCenter 8 using the `/api` API
 - Python 3
 - Nagios Core 4
 
-vCenter 8 uses the same `/api/session` and `/api/vcenter/host` API style used by the `api` mode, but should be considered separately from the versions explicitly tested above.
+## Repository
+
+Project repository:
+
+https://github.com/yama97/check_vcenter_hosts
 
 ## License
 
-Add the license for this project here.
+License information will be added to this project.
